@@ -36,6 +36,7 @@ type Bus interface {
 // EventBus - box for handlers and callbacks.
 type EventBus struct {
 	handlers map[string][]*eventHandler
+	events   map[string][]interface{}
 	lock     sync.Mutex // a lock for the map
 	wg       sync.WaitGroup
 }
@@ -52,6 +53,7 @@ type eventHandler struct {
 func New() Bus {
 	b := &EventBus{
 		make(map[string][]*eventHandler),
+		make(map[string][]interface{}),
 		sync.Mutex{},
 		sync.WaitGroup{},
 	}
@@ -66,6 +68,10 @@ func (bus *EventBus) doSubscribe(topic string, fn interface{}, handler *eventHan
 		return fmt.Errorf("%s is not of type reflect.Func", reflect.TypeOf(fn).Kind())
 	}
 	bus.handlers[topic] = append(bus.handlers[topic], handler)
+	args, ok := bus.events[topic]
+	if ok {
+		go bus.Publish(topic, args...)
+	}
 	return nil
 }
 
@@ -131,6 +137,7 @@ func (bus *EventBus) Unsubscribe(topic string, handler interface{}) error {
 func (bus *EventBus) Publish(topic string, args ...interface{}) {
 	bus.lock.Lock() // will unlock if handler is not found or always after setUpPublish
 	defer bus.lock.Unlock()
+	bus.events[topic] = args
 	if handlers, ok := bus.handlers[topic]; ok && 0 < len(handlers) {
 		// Handlers slice may be changed by removeHandler and Unsubscribe during iteration,
 		// so make a copy and iterate the copied slice.
