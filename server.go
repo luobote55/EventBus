@@ -58,21 +58,22 @@ func (server *Server) EventBus() Bus {
 	return server.eventBus
 }
 
-func (server *Server) rpcCallback(subscribeArg *SubscribeArg) func(args ...interface{}) {
-	return func(args ...interface{}) {
+func (server *Server) rpcCallback(subscribeArg *SubscribeArg) func(args ...interface{}) interface{} {
+	return func(args ...interface{}) interface{} {
 		client, connErr := rpc.DialHTTPPath("tcp", subscribeArg.ClientAddr, subscribeArg.ClientPath)
-		defer client.Close()
 		if connErr != nil {
-			fmt.Errorf("dialing: %v", connErr)
+			return errors.New(fmt.Sprintf("dialing: %v", connErr))
 		}
+		defer client.Close()
 		clientArg := new(ClientArg)
 		clientArg.Topic = subscribeArg.Topic
 		clientArg.Args = args
 		var reply bool
 		err := client.Call(subscribeArg.ServiceMethod, clientArg, &reply)
 		if err != nil {
-			fmt.Errorf("dialing: %v", err)
+			return errors.New(fmt.Sprintf(" client.Call: %v", err))
 		}
+		return nil
 	}
 }
 

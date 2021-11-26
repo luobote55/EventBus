@@ -101,8 +101,9 @@ func TestUnsubscribeMethod(t *testing.T) {
 
 func TestPublish(t *testing.T) {
 	bus := New()
+	bus.Publish("topic", 20, nil)
 	bus.Subscribe("topic", func(a int, err error) {
-		if a != 10 {
+		if a != 10 && a != 20{
 			t.Fail()
 		}
 
