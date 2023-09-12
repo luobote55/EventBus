@@ -20,12 +20,23 @@ type ClientArg struct {
 	Topic string
 }
 
+type ClientOption func(o *Client)
+
+// Logger with server logger.
+// Deprecated: use global logger instead.
+func ClientOptionLogger(logger iLogger) ClientOption {
+	return func(s *Client) {
+		s.logger = logger
+	}
+}
+
 // Client - object capable of subscribing to a remote event bus
 type Client struct {
 	eventBus Bus
 	address  string
 	path     string
 	service  *ClientService
+	logger   iLogger
 }
 
 // NewClient - create a client object with the address and server path
@@ -66,12 +77,12 @@ func (client *Client) doSubscribe(topic string, fn interface{}, serverAddr, serv
 	}
 }
 
-//Subscribe subscribes to a topic in a remote event bus
+// Subscribe subscribes to a topic in a remote event bus
 func (client *Client) Subscribe(topic string, fn interface{}, serverAddr, serverPath string) {
 	client.doSubscribe(topic, fn, serverAddr, serverPath, Subscribe)
 }
 
-//SubscribeOnce subscribes once to a topic in a remote event bus
+// SubscribeOnce subscribes once to a topic in a remote event bus
 func (client *Client) SubscribeOnce(topic string, fn interface{}, serverAddr, serverPath string) {
 	client.doSubscribe(topic, fn, serverAddr, serverPath, SubscribeOnce)
 }
@@ -88,8 +99,8 @@ func (client *Client) Start() error {
 		if err == nil {
 			service.wg.Add(1)
 			service.started = true
-			go http.Serve(l, nil)	
-		}	
+			go http.Serve(l, nil)
+		}
 	} else {
 		err = errors.New("Client service already started")
 	}

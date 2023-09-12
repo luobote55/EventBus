@@ -3,10 +3,11 @@ package EventBus
 import (
 	"fmt"
 	"reflect"
+	"runtime"
 	"sync"
 )
 
-//BusSubscriber defines subscription-related bus behavior
+// BusSubscriber defines subscription-related bus behavior
 type BusSubscriber interface {
 	Subscribe(topic string, fn interface{}) error
 	SubscribeAsync(topic string, fn interface{}, transactional bool) error
@@ -15,22 +16,32 @@ type BusSubscriber interface {
 	Unsubscribe(topic string, handler interface{}) error
 }
 
-//BusPublisher defines publishing-related bus behavior
+// BusPublisher defines publishing-related bus behavior
 type BusPublisher interface {
 	Publish(topic string, args ...interface{})
 }
 
-//BusController defines bus control behavior (checking handler's presence, synchronization)
+// BusController defines bus control behavior (checking handler's presence, synchronization)
 type BusController interface {
 	HasCallback(topic string) bool
 	WaitAsync()
 }
 
-//Bus englobes global (subscribe, publish, control) bus behavior
+// Bus englobes global (subscribe, publish, control) bus behavior
 type Bus interface {
 	BusController
 	BusSubscriber
 	BusPublisher
+}
+
+type EventBusOption func(o *EventBus)
+
+// Logger with server logger.
+// Deprecated: use global logger instead.
+func EventBusOptionLogger(logger iLogger) EventBusOption {
+	return func(s *EventBus) {
+		s.logger = logger
+	}
 }
 
 // EventBus - box for handlers and callbacks.
@@ -39,6 +50,7 @@ type EventBus struct {
 	events   map[string][]interface{}
 	lock     sync.Mutex // a lock for the map
 	wg       sync.WaitGroup
+	logger   iLogger
 }
 
 type eventHandler struct {
@@ -49,13 +61,17 @@ type eventHandler struct {
 	sync.Mutex    // lock for an event handler - useful for running async callbacks serially
 }
 
-// New returns new EventBus with empty handlers.
-func New() Bus {
+// NewEventBus returns new EventBus with empty handlers.
+func NewEventBus(opts ...EventBusOption) Bus {
 	b := &EventBus{
-		make(map[string][]*eventHandler),
-		make(map[string][]interface{}),
-		sync.Mutex{},
-		sync.WaitGroup{},
+		handlers: make(map[string][]*eventHandler),
+		events:   make(map[string][]interface{}),
+		lock:     sync.Mutex{},
+		wg:       sync.WaitGroup{},
+		logger:   nil,
+	}
+	for _, o := range opts {
+		o(b)
 	}
 	return Bus(b)
 }
@@ -156,7 +172,16 @@ func (bus *EventBus) Publish(topic string, args ...interface{}) {
 					handler.Lock()
 					bus.lock.Lock()
 				}
-				go bus.doPublishAsync(handler, topic, args...)
+				go func() {
+					defer func() {
+						if rerr := recover(); rerr != nil {
+							buf := make([]byte, 64<<10) //nolint:gomnd
+							n := runtime.Stack(buf, false)
+							bus.logger.Error(fmt.Sprintf("panic %v: \n%s\n", rerr, buf[:n]))
+						}
+					}()
+					bus.doPublishAsync(handler, topic, args...)
+				}()
 			}
 		}
 	}

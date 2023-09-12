@@ -6,15 +6,15 @@ import (
 )
 
 func TestNew(t *testing.T) {
-	bus := New()
+	bus := NewEventBus()
 	if bus == nil {
-		t.Log("New EventBus not created!")
+		t.Log("NewEventBus EventBus not created!")
 		t.Fail()
 	}
 }
 
 func TestHasCallback(t *testing.T) {
-	bus := New()
+	bus := NewEventBus()
 	bus.Subscribe("topic", func() {})
 	if bus.HasCallback("topic_topic") {
 		t.Fail()
@@ -25,7 +25,7 @@ func TestHasCallback(t *testing.T) {
 }
 
 func TestSubscribe(t *testing.T) {
-	bus := New()
+	bus := NewEventBus()
 	if bus.Subscribe("topic", func() {}) != nil {
 		t.Fail()
 	}
@@ -35,7 +35,7 @@ func TestSubscribe(t *testing.T) {
 }
 
 func TestSubscribeOnce(t *testing.T) {
-	bus := New()
+	bus := NewEventBus()
 	if bus.SubscribeOnce("topic", func() {}) != nil {
 		t.Fail()
 	}
@@ -45,7 +45,7 @@ func TestSubscribeOnce(t *testing.T) {
 }
 
 func TestSubscribeOnceAndManySubscribe(t *testing.T) {
-	bus := New()
+	bus := NewEventBus()
 	event := "topic"
 	flag := 0
 	fn := func() { flag += 1 }
@@ -60,7 +60,7 @@ func TestSubscribeOnceAndManySubscribe(t *testing.T) {
 }
 
 func TestUnsubscribe(t *testing.T) {
-	bus := New()
+	bus := NewEventBus()
 	handler := func() {}
 	bus.Subscribe("topic", handler)
 	if bus.Unsubscribe("topic", handler) != nil {
@@ -80,7 +80,7 @@ func (h *handler) Handle() {
 }
 
 func TestUnsubscribeMethod(t *testing.T) {
-	bus := New()
+	bus := NewEventBus()
 	h := &handler{val: 0}
 
 	bus.Subscribe("topic", h.Handle)
@@ -100,10 +100,10 @@ func TestUnsubscribeMethod(t *testing.T) {
 }
 
 func TestPublish(t *testing.T) {
-	bus := New()
+	bus := NewEventBus()
 	bus.Publish("topic", 20, nil)
 	bus.Subscribe("topic", func(a int, err error) {
-		if a != 10 && a != 20{
+		if a != 10 && a != 20 {
 			t.Fail()
 		}
 
@@ -117,7 +117,7 @@ func TestPublish(t *testing.T) {
 func TestSubcribeOnceAsync(t *testing.T) {
 	results := make([]int, 0)
 
-	bus := New()
+	bus := NewEventBus()
 	bus.SubscribeOnceAsync("topic", func(a int, out *[]int) {
 		*out = append(*out, a)
 	})
@@ -139,7 +139,7 @@ func TestSubcribeOnceAsync(t *testing.T) {
 func TestSubscribeAsyncTransactional(t *testing.T) {
 	results := make([]int, 0)
 
-	bus := New()
+	bus := NewEventBus()
 	bus.SubscribeAsync("topic", func(a int, out *[]int, dur string) {
 		sleep, _ := time.ParseDuration(dur)
 		time.Sleep(sleep)
@@ -163,7 +163,7 @@ func TestSubscribeAsyncTransactional(t *testing.T) {
 func TestSubscribeAsync(t *testing.T) {
 	results := make(chan int)
 
-	bus := New()
+	bus := NewEventBus()
 	bus.SubscribeAsync("topic", func(a int, out chan<- int) {
 		out <- a
 	}, false)
