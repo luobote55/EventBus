@@ -68,7 +68,7 @@ func NewEventBus(opts ...EventBusOption) Bus {
 		events:   make(map[string][]interface{}),
 		lock:     sync.Mutex{},
 		wg:       sync.WaitGroup{},
-		logger:   nil,
+		logger:   &LoggerModk{},
 	}
 	for _, o := range opts {
 		o(b)
