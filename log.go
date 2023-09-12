@@ -11,7 +11,6 @@ type iLogger interface {
 	Warn(content ...interface{})
 	Info(content ...interface{})
 	Debug(content ...interface{})
-	Log(content ...interface{})
 }
 
 func RegLog(log iLogger) {
