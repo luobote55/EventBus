@@ -172,7 +172,7 @@ func (bus *EventBus) Publish(topic string, args ...interface{}) {
 					handler.Lock()
 					bus.lock.Lock()
 				}
-				go func() {
+				go func(handler *eventHandler) {
 					defer func() {
 						if rerr := recover(); rerr != nil {
 							buf := make([]byte, 64<<10) //nolint:gomnd
@@ -181,7 +181,7 @@ func (bus *EventBus) Publish(topic string, args ...interface{}) {
 						}
 					}()
 					bus.doPublishAsync(handler, topic, args...)
-				}()
+				}(handler)
 			}
 		}
 	}
